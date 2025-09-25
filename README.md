@@ -14,7 +14,8 @@ This project analyzes EEG data to identify markers that distinguish Alzheimer’
 
   
 ## Installation 
-1. Clone the repository:
+1. Clone the repository: 
 ```bash
 git clone https://github.com/garimaaa01/predictive_model.git
 cd predictive_model
+pip install -r requirements.txt
