@@ -21,8 +21,8 @@ This project analyzes EEG data to identify markers that distinguish Alzheimer’
 git clone https://github.com/garimaaa01/predictive_model.git
 cd predictive_model
 ```
- Git will ask for username -> enter GitHub username
- Git will ask for password -> enter the personal access token here
+- Git will ask for username -> enter GitHub username              
+- Git will ask for password -> enter the personal access token here
 
 
 
