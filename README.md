@@ -14,8 +14,20 @@ This project analyzes EEG data to identify markers that distinguish Alzheimer’
 
   
 ## Installation 
-1. Clone the repository: 
+1. Clone the repository:
+2. Since this repository is private, you will need to authenticate either using a personal access token (PAT) with HTTPS or via SSH:
+
 ```bash
 git clone https://github.com/garimaaa01/predictive_model.git
 cd predictive_model
+```
+# Git will ask for username -> enter GitHub username
+# Git will ask for password -> enter the personal access token here
+
+
+
+3.Download the necessary libraries:
+```bash
 pip install -r requirements.txt
+```
+
