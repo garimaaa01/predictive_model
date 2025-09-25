@@ -1,0 +1,5 @@
+*.h5
+*.pkl
+data.h5
+all_epochs.pkl
+eeg_data/
