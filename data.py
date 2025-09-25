@@ -6,6 +6,7 @@ import pickle
 from scipy import stats 
 import networkx as nx
 import h5py
+from joblib import Parallel, delayed
 
 def main():
 
@@ -44,7 +45,8 @@ def main():
 
 
 
-    for i,sub in enumerate(subjectwise_epochs):
+   
+    def per_sub ( i,sub):
         sampen,psd,plv=metrices(sub)
         global_effiy, cluster_coef, Character_PathLen, small_worldness=network_metric(plv)
 
@@ -71,6 +73,8 @@ def main():
             subjectwise_per_epoch_cluster_coef[i]=cluster_coef
             subjectwise_per_epoch_character_path_len[i]=Character_PathLen
             subjectwise_per_epoch_small_worldness[i]=small_worldness
+    
+    Parallel(n_jobs=-1)(delayed(per_sub)(i, sub) for i, sub in enumerate(subjectwise_epochs))
 
         
     #----------------------------#
