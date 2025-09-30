@@ -98,10 +98,6 @@ def main():
    
 
 
-
-
-
-
 def metrices(sub:mne.Epochs)->np.array: 
     bands = { "delta": (0.5, 4), "theta": (4.0, 7.5), "alpha": (8.0, 12.0),"beta": (12.0, 30.0),"low_gamma": (30.0, 45.0)}
     psd=sub.compute_psd(method='multitaper', fmin=0, fmax=45, picks="eeg", proj=False, remove_dc=True, exclude=(), n_jobs=1, verbose=None)
