@@ -125,6 +125,8 @@ def viz_histogram(hf, tsv_path="eeg_data/participants.tsv"):
             plt.savefig(f"{RAW_VIZ_DIR}/histogram_{m}_allwaves.png", dpi=200, bbox_inches='tight')
             plt.show()
 
+            
+def viz_violinplot(groups:dict, result:dict, ch_list:dict, info):
     bands = ["delta", "theta", "alpha", "beta", "low_gamma"]
     metric = ["sampen","psd","plv","ge","cc","cpl","sm"]
     grp  = ["AD", "HC"]
