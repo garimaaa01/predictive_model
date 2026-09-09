@@ -25,6 +25,12 @@ from itertools import permutations
 import pandas as pd
 import seaborn as sns
 import h5py
+import os
+
+# fixed output folder for this file's statistical report figures - each
+# rerun overwrites the same filenames instead of piling up new ones
+SUMMARY_VIZ_DIR = "results/summary_viz"
+os.makedirs(SUMMARY_VIZ_DIR, exist_ok=True)
 
 
 
@@ -285,7 +291,7 @@ def run_cross_validation(hf, tsv_path="eeg_data/participants.tsv", n_folds=5, al
     print()
     print("-------------------------------")
     print(f"Mean accuracy across {len(fold_accuracies)} folds: {fold_accuracies.mean():.3f} +/- {fold_accuracies.std():.3f}")
-    print(f"Per-fold accuracies: {fold_accuracies}")
+    print(f"Per-fold accuracies: {[f'{a:.3f}' for a in fold_accuracies]}")
     print(f"Per-fold significant feature counts: {fold_n_features}")
     print("-------------------------------")
     print()
@@ -795,6 +801,7 @@ def plot_lasso_channel_band(lasso_dict, metric=''):
         plt.xlabel("Wave index")
         plt.ylabel("Channel index")
         plt.title(f"LASSO coefficients — {metric}")
+        plt.savefig(f"{SUMMARY_VIZ_DIR}/lasso_{metric}_heatmap.png", dpi=200, bbox_inches='tight')
         plt.show()
 
 
@@ -819,6 +826,7 @@ def plot_lasso_plv(lasso_dict):
     plt.xlabel("Wave index")
     plt.ylabel("Edge index")
     plt.title("LASSO coefficients — PLV")
+    plt.savefig(f"{SUMMARY_VIZ_DIR}/lasso_plv_heatmap.png", dpi=200, bbox_inches='tight')
     plt.show()
 
 

@@ -8,9 +8,16 @@ import seaborn as sns
 import h5py
 import pickle
 import sys
+import os
 from statsmodels.stats.multitest import multipletests
 import statsmodels.api as sm  
 from statsmodels.regression.linear_model import OLS
+
+
+# fixed output folder for this file's raw exploratory plots - each rerun
+# overwrites the same filenames instead of piling up new ones
+RAW_VIZ_DIR = "results/raw_viz"
+os.makedirs(RAW_VIZ_DIR, exist_ok=True)
 
 
 def main():
@@ -93,9 +100,8 @@ def viz_histogram(hf, tsv_path="eeg_data/participants.tsv"):
                 axes[0].legend()
                 axes[1].legend()
                 plt.tight_layout()
+                plt.savefig(f"{RAW_VIZ_DIR}/histogram_{m}_wave{i+1}.png", dpi=200, bbox_inches='tight')
                 plt.show()
-
-  
         elif arr.ndim == 3:  # 3D: subjects x something x waves
             fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
             for i, (band, color) in enumerate(zip(band_names, colors)):
@@ -116,9 +122,8 @@ def viz_histogram(hf, tsv_path="eeg_data/participants.tsv"):
             axes[0].legend()
             axes[1].legend()
             plt.tight_layout()
+            plt.savefig(f"{RAW_VIZ_DIR}/histogram_{m}_allwaves.png", dpi=200, bbox_inches='tight')
             plt.show()
-
-def viz_violinplot(groups:dict, result:dict  , ch_list:dict ,info):
 
     bands = ["delta", "theta", "alpha", "beta", "low_gamma"]
     metric = ["sampen","psd","plv","ge","cc","cpl","sm"]
@@ -175,6 +180,7 @@ def viz_violinplot(groups:dict, result:dict  , ch_list:dict ,info):
             plt.ylabel(f"{m}value")
             plt.xlabel("Frequency band")
             plt.tight_layout()
+            plt.savefig(f"{RAW_VIZ_DIR}/boxplot_{m}.png", dpi=200, bbox_inches='tight')
             plt.show()
             
             plt.figure(figsize=(15,6))
@@ -189,6 +195,7 @@ def viz_violinplot(groups:dict, result:dict  , ch_list:dict ,info):
             plt.ylabel(f"{m}value")
             plt.xlabel("Frequency band")
             plt.tight_layout()
+            plt.savefig(f"{RAW_VIZ_DIR}/violinplot_{m}.png", dpi=200, bbox_inches='tight')
             plt.show()
 
 
