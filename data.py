@@ -1,3 +1,4 @@
+# data.py  --2
 import mne
 import numpy as np
 import antropy as ant
@@ -7,6 +8,7 @@ from scipy import stats
 import networkx as nx
 import h5py
 from joblib import Parallel, delayed
+
 
 def main():
 
@@ -199,11 +201,15 @@ def network_metric(sub: np.array):
         for edx, epoch in enumerate(sub):
             for wdx, wave in enumerate(epoch):
                 C_rand_list, L_rand_list = [], []
+                # bug fix: was reusing leftover G from loop above (last
+                # epoch/wave's graph) for every random graph's edge count.
+                # recompute fresh from this wave instead.
+                n_edges_this_wave = np.count_nonzero(wave) // 2
 
                 for _ in range(n_random):
                     # create a connected random graph
                     while True:
-                        G_rand = nx.gnm_random_graph(nch, G.number_of_edges())
+                        G_rand = nx.gnm_random_graph(nch, n_edges_this_wave)
                         if nx.is_connected(G_rand):
                             break
 
@@ -262,11 +268,14 @@ def network_metric(sub: np.array):
         # Small-worldness
         for wdx, wave in enumerate(sub):
             C_rand_list, L_rand_list = [], []
+            # same fix as ndim==4 branch above - recompute this wave's own
+            # edge count, don't reuse leftover G.
+            n_edges_this_wave = np.count_nonzero(wave) // 2
 
             for _ in range(n_random):
                 # create a connected random graph
                 while True:
-                    G_rand = nx.gnm_random_graph(nch, G.number_of_edges())
+                    G_rand = nx.gnm_random_graph(nch, n_edges_this_wave)
                     if nx.is_connected(G_rand):
                         break
 
@@ -306,4 +315,3 @@ def network_metric(sub: np.array):
 
 if __name__ == "__main__":
     main()
-

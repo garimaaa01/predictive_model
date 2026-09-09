@@ -1,4 +1,4 @@
-
+# test.py
 import pandas as pd 
 import bct
 from scipy import stats 
@@ -25,7 +25,7 @@ def main():
         group , result = covaries(hf)
 
         if len(sys.argv)==2 and sys.argv[1]=="viz":
-            viz_histogram(hf)
+            viz_histogram(hf, tsv_path="eeg_data/participants.tsv")
             viz_violinplot(group, result , ch_list, info)
            
 
@@ -37,10 +37,19 @@ def main():
 # VISUALIZATION    
 #-----------------------
 
-def viz_histogram(hf):
+def viz_histogram(hf, tsv_path="eeg_data/participants.tsv"):
 
     band_names = ["delta", "theta", "alpha", "beta", "low_gamma"]
     colors = ["red", "green", "blue", "black", "purple"]
+
+    # switched from hardcoded arr[:36]/arr[36:] position split to reading
+    # actual labels from participants.tsv, same as covaries() does. old
+    # version assumed AD subjects always come first in data.h5 - true for
+    # this dataset today, but silently wrong if subject order ever changed,
+    # no error, just mislabeled plots
+    participants = pd.read_csv(tsv_path, sep="\t")
+    ad_mask = (participants["Group"] == "AD").to_numpy()
+    hc_mask = (participants["Group"] == "HC").to_numpy()
 
     # HISTOGRAM/ KDE
     #----------------
@@ -67,8 +76,8 @@ def viz_histogram(hf):
         if arr.ndim == 4 :  # 4D: subjects x something x something x waves
             for i, (band, color) in enumerate(zip(band_names, colors)):
                 fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
-                ad_vals = arr[:36, :, :, i].flatten()
-                hc_vals = arr[36:, :, :, i].flatten()
+                ad_vals = arr[ad_mask, :, :, i].flatten()
+                hc_vals = arr[hc_mask, :, :, i].flatten()
 
                 sns.histplot(ad_vals, kde=True, bins=30, color=color, alpha=0.6, label=band, ax=axes[0])
                 sns.histplot(hc_vals, kde=True, bins=30, color=color, alpha=0.6, label=band, ax=axes[1])
@@ -90,8 +99,8 @@ def viz_histogram(hf):
         elif arr.ndim == 3:  # 3D: subjects x something x waves
             fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
             for i, (band, color) in enumerate(zip(band_names, colors)):
-                ad_vals = arr[:36, :, i].flatten()
-                hc_vals = arr[36:, :, i].flatten()
+                ad_vals = arr[ad_mask, :, i].flatten()
+                hc_vals = arr[hc_mask, :, i].flatten()
 
                 sns.histplot(ad_vals, kde=True, bins=30, color=color, alpha=0.6, label=band, ax=axes[0])
                 sns.histplot(hc_vals, kde=True, bins=30, color=color, alpha=0.6, label=band, ax=axes[1])
@@ -193,10 +202,28 @@ def viz_violinplot(groups:dict, result:dict  , ch_list:dict ,info):
 # TEST
 #--------
 
-def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42):
+def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42, subject_indices=None):
+    # seed set once here, not inside permutation_ancova - was resetting to
+    # same seed on every one of the ~200+ calls before, so every test drew
+    # identical "random" shuffles instead of independent ones
+    np.random.seed(seed)
+
     participants = pd.read_csv(tsv_path, sep="\t")
-    ad_mask = participants["Group"] == "AD"
-    hc_mask = participants["Group"] == "HC"
+
+    # subject_indices restricts every test below to only these subjects -
+    # for CV, pass a fold's training row positions so this fn is blind to
+    # the held-out fold. before this param existed, covaries() always saw
+    # every subject, meaning feature significance was decided using
+    # subjects that later became LASSO's "held-out" test set - the leakage
+    # that inflated the original 80% accuracy
+    if subject_indices is not None:
+        include_mask = np.zeros(len(participants), dtype=bool)
+        include_mask[subject_indices] = True
+    else:
+        include_mask = np.ones(len(participants), dtype=bool)
+
+    ad_mask = (participants["Group"] == "AD") & include_mask
+    hc_mask = (participants["Group"] == "HC") & include_mask
 
     # Load data
     sampen = hf["sampen"][:]
@@ -236,12 +263,19 @@ def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42):
     _, n_ch, n_wave = group["AD"]["sampen"].shape
     network_metrics = ["ge", "cc", "cpl", "sm"]
     n_network_measures = group["AD"]["ge"].shape[1]  # assuming all have same number of measures
+    n_edges = group["AD"]["plv"].shape[2]  # number of upper-triangle connections (171 for 19 channels)
 
-    # Results dictionary
+    # results arrays now carry a 4th slot per test - (stat, raw_p,
+    # effect_size, fdr_p) - fdr sits alongside raw instead of replacing it.
+    # before this, every p-value was only ever checked against raw
+    # alpha=0.05, no correction for how many tests ran (95 for sampen, 95
+    # for psd, several per network measure, 855 for plv) - some
+    # "significant" results at that volume are expected false positives
+    # from chance alone
     results = {
-        "sampen_psd": np.zeros((2, n_ch, n_wave, 3)),      # stat, perm_p, effect_size
-        "network": np.zeros((4, n_network_measures, 3)),   # ge, cc, cpl, sm
-        "plv": np.empty(n_wave, dtype=object),
+        "sampen_psd": np.zeros((2, n_ch, n_wave, 4)),      # stat, raw_p, effect_size, fdr_p
+        "network": np.zeros((4, n_network_measures, 4)),   # ge, cc, cpl, sm
+        "plv": np.zeros((n_wave, n_edges, 4)),             # stat, raw_p, effect_size, fdr_p, per connection
     }
 
     # Loop over "sampen" and "psd"
@@ -255,6 +289,7 @@ def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42):
             "gender": (np.concatenate([group["AD"]["gender"], group["HC"]["gender"]]) == "M").astype(int)
         })
 
+        raw_pvals = []
         for ch in range(n_ch):
             for w in range(n_wave):
                 vals_ad = ad_data[:, ch, w]
@@ -269,11 +304,21 @@ def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42):
 
                 # Permutation ANCOVA
                 vals = np.concatenate([vals_ad, vals_hc])
-                stat, perm_p = permutation_ancova(vals, all_labels, cov_df, n_perm=n_perm, seed=seed)
+                stat, perm_p = permutation_ancova(vals, all_labels, cov_df, n_perm=n_perm)
 
                 results["sampen_psd"][i, ch, w, 0] = stat
                 results["sampen_psd"][i, ch, w, 1] = perm_p
                 results["sampen_psd"][i, ch, w, 2] = effect_size_d
+                raw_pvals.append(perm_p)
+
+        # correct this metric's full batch together (95 tests: n_ch x
+        # n_wave), store corrected p alongside raw, same ch/wave order
+        _, fdr_p, _, _ = multipletests(raw_pvals, alpha=0.05, method="fdr_bh")
+        idx = 0
+        for ch in range(n_ch):
+            for w in range(n_wave):
+                results["sampen_psd"][i, ch, w, 3] = fdr_p[idx]
+                idx += 1
 
     # Loop over network metrics
     for i, m in enumerate(network_metrics):
@@ -287,6 +332,7 @@ def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42):
         })
 
         n_measures = ad_data.shape[1]
+        raw_pvals = []
         for m_idx in range(n_measures):
             vals_ad = ad_data[:, m_idx]
             vals_hc = hc_data[:, m_idx]
@@ -300,73 +346,70 @@ def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42):
 
             # Permutation ANCOVA
             vals = np.concatenate([vals_ad, vals_hc])
-            stat, perm_p = permutation_ancova(vals, all_labels, cov_df, n_perm=n_perm, seed=seed)
+            stat, perm_p = permutation_ancova(vals, all_labels, cov_df, n_perm=n_perm)
 
             results["network"][i, m_idx, 0] = stat
             results["network"][i, m_idx, 1] = perm_p
             results["network"][i, m_idx, 2] = effect_size_d
+            raw_pvals.append(perm_p)
+
+        # correct this network measure's batch together (across n_measures),
+        # same pattern as above
+        _, fdr_p, _, _ = multipletests(raw_pvals, alpha=0.05, method="fdr_bh")
+        for m_idx in range(n_measures):
+            results["network"][i, m_idx, 3] = fdr_p[m_idx]
 
 
    
 
+    # PLV used to average all 171 connections into one number per
+    # subject per wave BEFORE testing (ad_vals.mean(axis=1)) - only 5
+    # total PLV p-values, one per wave. only tells you if the OVERALL
+    # average differs, not which connections drive it - and LASSO uses
+    # all 171 as separate features regardless. now loops over every
+    # individual connection (edge) per wave, same pattern as sampen/psd
+    # above, so each of the 171 connections per wave gets its own test
+    ad_plv = group["AD"]["plv"]  # shape: (n_AD, n_wave, n_edges)
+    hc_plv = group["HC"]["plv"]  # shape: (n_HC, n_wave, n_edges)
+    all_labels = ["AD"]*ad_plv.shape[0] + ["HC"]*hc_plv.shape[0]
+
+    cov_df = pd.DataFrame({
+        "age": np.concatenate([group["AD"]["age"], group["HC"]["age"]]),
+        "gender": (np.concatenate([group["AD"]["gender"], group["HC"]["gender"]]) == "M").astype(int)
+    })
+
+    raw_pvals = []
     for w in range(n_wave):
-        # Extract PLV vectors for this wave
-        ad_vals = group["AD"]["plv"][:, w, :]  # shape: (n_AD, 171)
-        hc_vals = group["HC"]["plv"][:, w, :]  # shape: (n_HC, 171)
-        
-        # Compute mean PLV per subject for this wave
-        ad_mean = ad_vals.mean(axis=1)
-        hc_mean = hc_vals.mean(axis=1)
-        
-        all_labels = ["AD"]*len(ad_mean) + ["HC"]*len(hc_mean)
-        cov_df = pd.DataFrame({
-            "age": np.concatenate([group["AD"]["age"], group["HC"]["age"]]),
-            "gender": (np.concatenate([group["AD"]["gender"], group["HC"]["gender"]]) == "M").astype(int)
-        })
+        for edge in range(n_edges):
+            vals_ad = ad_plv[:, w, edge]
+            vals_hc = hc_plv[:, w, edge]
 
-        # Compute pooled SD and Cohen's d
-        pooled_sd = np.sqrt(
-            ((len(ad_mean)-1)*np.var(ad_mean, ddof=1) + (len(hc_mean)-1)*np.var(hc_mean, ddof=1)) /
-            (len(ad_mean) + len(hc_mean) - 2)
-        )
-        effect_size_d = (np.mean(ad_mean) - np.mean(hc_mean)) / pooled_sd
+            # Cohen's d
+            pooled_sd = np.sqrt(
+                ((len(vals_ad)-1)*np.var(vals_ad, ddof=1) + (len(vals_hc)-1)*np.var(vals_hc, ddof=1)) /
+                (len(vals_ad) + len(vals_hc) - 2)
+            )
+            effect_size_d = (np.mean(vals_ad) - np.mean(vals_hc)) / pooled_sd
 
-        # Permutation ANCOVA
-        vals_all = np.concatenate([ad_mean, hc_mean])
-        stat, perm_p = permutation_ancova(vals_all, all_labels, cov_df, n_perm=n_perm, seed=seed)
+            # Permutation ANCOVA
+            vals = np.concatenate([vals_ad, vals_hc])
+            stat, perm_p = permutation_ancova(vals, all_labels, cov_df, n_perm=n_perm)
 
-        results["plv"][w] = {"stat": stat, "perm_p": perm_p, "effect_size": effect_size_d}
-    """
-    alpha = 0.05  # significance threshold
+            results["plv"][w, edge, 0] = stat
+            results["plv"][w, edge, 1] = perm_p
+            results["plv"][w, edge, 2] = effect_size_d
+            raw_pvals.append(perm_p)
 
-    for metric, arr in results.items():
-        print(f"\nMetric: {metric}, type: {type(arr)}, shape: {getattr(arr, 'shape', 'N/A')}")
-        
-        if isinstance(arr, np.ndarray) and arr.dtype != object:
-            # Check min, max
-            print("  Min:", np.min(arr), "Max:", np.max(arr))
-            print("  First element slice:", arr.flat[0])
-            
-            # If it has perm_p values (4th dimension or last dimension index 1)
-            if arr.shape[-1] >= 2:
-                perm_p = arr[..., 1]
-                sig_mask = perm_p < alpha
-                num_sig = np.sum(sig_mask)
-                print(f"  Number of significant comparisons (p<{alpha}): {num_sig}")
-                
-                effect_sizes = arr[..., 2] if arr.shape[-1] >= 3 else None
-                if effect_sizes is not None:
-                    print("  Effect sizes of significant comparisons:")
-                    print(effect_sizes[sig_mask])
-        
-        elif isinstance(arr, np.ndarray) and arr.dtype == object:
-            # For object arrays (like plv)
-            for i, val in enumerate(arr):
-                if val is None:
-                    print(f"  Element {i} is empty")
-                else:
-                    print(f"  Element {i} filled: {val}")"""
-
+    # PLV now runs n_wave x n_edges tests (855 for 5 waves x 171
+    # connections) - correcting all together as one PLV family, biggest
+    # multiple-comparisons risk in this file since it's by far the
+    # largest batch
+    _, fdr_p, _, _ = multipletests(raw_pvals, alpha=0.05, method="fdr_bh")
+    idx = 0
+    for w in range(n_wave):
+        for edge in range(n_edges):
+            results["plv"][w, edge, 3] = fdr_p[idx]
+            idx += 1
 
     return( group , results)
 
@@ -376,8 +419,75 @@ def covaries(hf, tsv_path="eeg_data/participants.tsv", n_perm=500, seed=42):
 # HELPER   FOR TEST
 #--------------------
 
-def permutation_ancova(vals, group_labels, covariates, n_perm=500, seed=42):
-    np.random.seed(seed)
+def residualize_on_covariates(vals_ad, vals_hc, age_ad, age_hc, gender_ad, gender_hc):
+    """
+    for unicovaries_test_avg - regress a feature on age+gender, return
+    leftover (residual) values for AD/HC separately, original order. same
+    residualizing step permutation_ancova does internally for covaries() -
+    pulled out here so unicovaries can apply the same adjustment before
+    Mann-Whitney U instead of testing raw values.
+    """
+    cov_df = pd.DataFrame({
+        "age": np.concatenate([age_ad, age_hc]),
+        "gender": (np.concatenate([gender_ad, gender_hc]) == "M").astype(int),
+    })
+    vals = np.concatenate([vals_ad, vals_hc])
+    cov_df["feature"] = vals
+
+    model = OLS(cov_df["feature"], sm.add_constant(cov_df[["age", "gender"]])).fit()
+    residuals = model.resid.values
+
+    n_ad = len(vals_ad)
+    return residuals[:n_ad], residuals[n_ad:]
+
+
+def residualize_connectivity_matrices(mat_ad, mat_hc, age_ad, age_hc, gender_ad, gender_hc):
+    """
+    NBS operates on whole channel x channel matrices, not one value at a
+    time, so can't reuse residualize_on_covariates directly. residualizes
+    every connection (upper triangle entry) across ALL subjects on
+    age+gender, reassembles symmetric matrices from residuals, splits back
+    to AD/HC. before this, NBS ran on raw PLV matrices, no age/gender
+    adjustment at all.
+
+    mat_ad, mat_hc: shape (n_subj, n_ch, n_ch), one wave's matrices per
+    group.
+    returns: (resid_ad, resid_hc), same shapes, symmetric, zero diagonal,
+    age/gender-adjusted.
+    """
+    n_ad, n_ch, _ = mat_ad.shape
+    n_hc = mat_hc.shape[0]
+
+    age_all = np.concatenate([age_ad, age_hc])
+    gender_all = (np.concatenate([gender_ad, gender_hc]) == "M").astype(int)
+    cov_df_base = pd.DataFrame({"age": age_all, "gender": gender_all})
+
+    triu_idx = np.triu_indices(n_ch, k=1)
+    mat_all = np.concatenate([mat_ad, mat_hc], axis=0)  # (n_ad+n_hc, n_ch, n_ch)
+
+    resid_all = np.zeros_like(mat_all)
+
+    for i, j in zip(triu_idx[0], triu_idx[1]):
+        edge_vals = mat_all[:, i, j]
+        cov_df = cov_df_base.copy()
+        cov_df["feature"] = edge_vals
+        model = OLS(cov_df["feature"], sm.add_constant(cov_df[["age", "gender"]])).fit()
+        resid = model.resid.values
+        resid_all[:, i, j] = resid
+        resid_all[:, j, i] = resid  # keep symmetric
+
+    resid_ad = resid_all[:n_ad]
+    resid_hc = resid_all[n_ad:]
+    return resid_ad, resid_hc
+
+
+def permutation_ancova(vals, group_labels, covariates, n_perm=500):
+    # np.random.seed(...) used to be called here, inside this fn - reset
+    # on EVERY call, so every one of the ~200+ tests in covaries() drew
+    # the identical shuffle sequence. seed now set once, at the top of
+    # covaries(), before any tests run - each call here draws forward from
+    # that one stream instead of restarting it. don't add
+    # np.random.seed(...) back in here.
     df = covariates.copy()
     df["feature"] = vals
     df["group"] = (np.array(group_labels) == "AD").astype(int)
@@ -604,6 +714,12 @@ def unicovaries_test_avg(hf,tsv_path: str = "eeg_data/participants.tsv"):
             "cc":cc[ad_mask],
             "cpl":cpl[ad_mask],
             "sm":sm[ad_mask],
+            # covariates added so features can be residualized on
+            # age+gender before testing, matching covaries(). before this,
+            # tested raw values directly - age/gender-driven differences
+            # could masquerade as AD-vs-HC differences
+            "age": participants.loc[ad_mask, "Age"].values,
+            "gender": participants.loc[ad_mask, "Gender"].values,
         },
         "HC":{
             "sampen":sampen[hc_mask.to_numpy()],
@@ -613,6 +729,8 @@ def unicovaries_test_avg(hf,tsv_path: str = "eeg_data/participants.tsv"):
             "cc":cc[hc_mask],
             "cpl":cpl[hc_mask],
             "sm":sm[hc_mask],
+            "age": participants.loc[hc_mask, "Age"].values,
+            "gender": participants.loc[hc_mask, "Gender"].values,
         }}
     
     results = {
@@ -633,8 +751,16 @@ def unicovaries_test_avg(hf,tsv_path: str = "eeg_data/participants.tsv"):
 
             for ch in range(n_ch):
                 for w in range(n_wave):
-                    stat, p_value = stats.mannwhitneyu(ad[:, ch, w], hc[:, ch, w], alternative='two-sided')
-                    effect_size = 1 - (2 * stat) / (len(ad[:, ch, w]) * len(hc[:, ch, w]))
+                    # residualize this channel/wave's values on
+                    # age+gender before testing, instead of raw
+                    # Mann-Whitney on unadjusted values
+                    vals_ad_resid, vals_hc_resid = residualize_on_covariates(
+                        ad[:, ch, w], hc[:, ch, w],
+                        groups["AD"]["age"], groups["HC"]["age"],
+                        groups["AD"]["gender"], groups["HC"]["gender"],
+                    )
+                    stat, p_value = stats.mannwhitneyu(vals_ad_resid, vals_hc_resid, alternative='two-sided')
+                    effect_size = 1 - (2 * stat) / (len(vals_ad_resid) * len(vals_hc_resid))
 
                     results["sampen_psd"][i, ch, w, 0] = stat
                     results["sampen_psd"][i, ch, w, 2] = effect_size
@@ -655,8 +781,14 @@ def unicovaries_test_avg(hf,tsv_path: str = "eeg_data/participants.tsv"):
             metric_index = ["ge", "cc", "cpl", "sm"].index(m)
 
             for w in range(n_wave):
-                stat, p_value = stats.mannwhitneyu(ad[:, w], hc[:, w], alternative='two-sided')
-                effect_size = 1 - (2 * stat) / (len(ad[:, w]) * len(hc[:, w]))
+                # same residualizing step as above, for network measures
+                vals_ad_resid, vals_hc_resid = residualize_on_covariates(
+                    ad[:, w], hc[:, w],
+                    groups["AD"]["age"], groups["HC"]["age"],
+                    groups["AD"]["gender"], groups["HC"]["gender"],
+                )
+                stat, p_value = stats.mannwhitneyu(vals_ad_resid, vals_hc_resid, alternative='two-sided')
+                effect_size = 1 - (2 * stat) / (len(vals_ad_resid) * len(vals_hc_resid))
 
                 results["network"][metric_index, w, 0] = stat
                 results["network"][metric_index, w, 2] = effect_size
@@ -678,9 +810,16 @@ def unicovaries_test_avg(hf,tsv_path: str = "eeg_data/participants.tsv"):
         
 
     for w in range(n_wave):
-    
-        AD = np.transpose(tempo["AD"][:,w,:,:],(1, 2, 0))
-        HC = np.transpose(tempo["HC"][:,w,:,:],(1, 2, 0))
+        # residualize every connection in this wave's matrices on
+        # age+gender before NBS, instead of feeding NBS raw unadjusted
+        # matrices
+        resid_ad, resid_hc = residualize_connectivity_matrices(
+            tempo["AD"][:, w, :, :], tempo["HC"][:, w, :, :],
+            groups["AD"]["age"], groups["HC"]["age"],
+            groups["AD"]["gender"], groups["HC"]["gender"],
+        )
+        AD = np.transpose(resid_ad, (1, 2, 0))
+        HC = np.transpose(resid_hc, (1, 2, 0))
         pval, compo,_ = bct.nbs_bct(AD,HC, thresh=2.5,tail='both',k=1000,seed=42)
         results["plv"][w,0] = pval
         results["plv"][w,1] = compo
