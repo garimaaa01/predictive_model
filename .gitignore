@@ -1,3 +1,6 @@
+<<<<<<< HEAD
+.DS_Store
+=======
 *.h5
 *.pkl
 *pyc
@@ -6,3 +9,4 @@ all_epochs.pkl
 eeg_data/
 venv/
 
+>>>>>>> 80081968f5bd4012ca9f36466f0ff553f0ef55d0
