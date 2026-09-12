@@ -1,4 +1,4 @@
-# summary.py
+# summary.py --4
 #
 # run:
 #   python summary.py split        - single-split pipeline: one train/test
@@ -274,8 +274,16 @@ def run_cross_validation(hf, tsv_path="eeg_data/participants.tsv", n_folds=5, al
         # match lasso's training label convention.
         y_test_lasso_convention = 1 - y_test
 
+        from sklearn.metrics import confusion_matrix, roc_auc_score
         y_pred = lasso.predict(X_test_scaled)
         acc = accuracy_score(y_test_lasso_convention, y_pred)
+        tn, fp, fn, tp = confusion_matrix(y_test_lasso_convention, y_pred).ravel()
+        sensitivity = tp / (tp + fn)
+        specificity = tn / (tn + fp)
+        y_proba = lasso.predict_proba(X_test_scaled)[:, 1]
+        auc = roc_auc_score(y_test_lasso_convention, y_proba)
+        print(f"Fold {fold_num}: sens={sensitivity:.3f}, spec={specificity:.3f}, AUC={auc:.3f}")
+
 
         fold_accuracies.append(acc)
         fold_n_features.append(len(feature_map))
@@ -284,6 +292,15 @@ def run_cross_validation(hf, tsv_path="eeg_data/participants.tsv", n_folds=5, al
             if coef != 0:
                 selected_feature_counts[f] = selected_feature_counts.get(f, 0) + 1
                 selected_feature_coefs.setdefault(f, []).append(coef)
+
+        # full list of every feature selected THIS fold, not just ones
+        # that repeat across multiple folds - the "multi-fold" list further
+        # down only shows repeaters, so a feature selected in just one
+        # fold (e.g. a SampEn feature) would otherwise never get printed
+        this_fold_features = [(f, coef) for f, coef in zip(feature_map, lasso.coef_[0]) if coef != 0]
+        print(f"Fold {fold_num}: features selected this fold:")
+        for f, coef in this_fold_features:
+            print(f"  {f}: coef = {coef:.4f}")
 
         print(f"Fold {fold_num}: {len(feature_map)} significant features, accuracy = {acc:.3f}")
 
