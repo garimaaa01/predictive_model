@@ -1,12 +1,10 @@
-<<<<<<< HEAD
 .DS_Store
-=======
 *.h5
 *.pkl
-*pyc
+*.pyc
 data.h5
 all_epochs.pkl
 eeg_data/
 venv/
-
->>>>>>> 80081968f5bd4012ca9f36466f0ff553f0ef55d0
+results/
+__pycache__/
