@@ -278,8 +278,8 @@ def run_cross_validation(hf, tsv_path="eeg_data/participants.tsv", n_folds=5, al
         y_pred = lasso.predict(X_test_scaled)
         acc = accuracy_score(y_test_lasso_convention, y_pred)
         tn, fp, fn, tp = confusion_matrix(y_test_lasso_convention, y_pred).ravel()
-        sensitivity = tp / (tp + fn)
-        specificity = tn / (tn + fp)
+        sensitivity = tn / (tn + fp)
+        specificity = tp / (tp + fn)
         y_proba = lasso.predict_proba(X_test_scaled)[:, 1]
         auc = roc_auc_score(y_test_lasso_convention, y_proba)
         print(f"Fold {fold_num}: sens={sensitivity:.3f}, spec={specificity:.3f}, AUC={auc:.3f}")
@@ -372,10 +372,10 @@ def evaluation_lasso(lasso_dictionary,data_train ,data_label_train):
     for i, (f, coef) in enumerate(zip(lasso_dictionary["feature_map"], lasso_dictionary["coefficients"][0])):
        if coef !=0:
             selected_features.append((f, coef))
-            mean_hc = data_train[data_label_train == 0, i].mean()
-            mean_ad = data_train[data_label_train == 1, i].mean()
+            mean_ad = data_train[data_label_train == 0, i].mean()
+            mean_hc = data_train[data_label_train == 1, i].mean()
 
-            direction = "AD" if coef > 0 else "HC"
+            direction = "HC" if coef > 0 else "AD"
             print(f"Feature: {f}, Coef: {coef:.3f}, Mean HC: {mean_hc:.3f}, Mean AD: {mean_ad:.3f}, Predicts: {direction}")
 
     return selected_features
