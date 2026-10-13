@@ -1,0 +1,123 @@
+Running covaries() (permutation ANCOVA)...
+Running unicovaries_test_avg() (Mann-Whitney U + FDR, NBS for PLV)...
+max component size is 4
+estimating null distribution with 1000 permutations
+permutation 0 of 1000.  p-value so far is 0.000
+permutation 100 of 1000.  p-value so far is 0.119
+permutation 200 of 1000.  p-value so far is 0.154
+permutation 300 of 1000.  p-value so far is 0.146
+permutation 400 of 1000.  p-value so far is 0.152
+permutation 500 of 1000.  p-value so far is 0.148
+permutation 600 of 1000.  p-value so far is 0.140
+permutation 700 of 1000.  p-value so far is 0.137
+permutation 800 of 1000.  p-value so far is 0.141
+permutation 900 of 1000.  p-value so far is 0.141
+permutation 999 of 1000.  p-value so far is 0.142
+max component size is 7
+estimating null distribution with 1000 permutations
+permutation 0 of 1000.  p-value so far is 0.000
+permutation 100 of 1000.  p-value so far is 0.109
+permutation 200 of 1000.  p-value so far is 0.100
+permutation 300 of 1000.  p-value so far is 0.090
+permutation 400 of 1000.  p-value so far is 0.085
+permutation 500 of 1000.  p-value so far is 0.080
+permutation 600 of 1000.  p-value so far is 0.078
+permutation 700 of 1000.  p-value so far is 0.076
+permutation 800 of 1000.  p-value so far is 0.080
+permutation 900 of 1000.  p-value so far is 0.077
+permutation 999 of 1000.  p-value so far is 0.076
+max component size is 58
+estimating null distribution with 1000 permutations
+permutation 0 of 1000.  p-value so far is 0.000
+permutation 100 of 1000.  p-value so far is 0.010
+permutation 200 of 1000.  p-value so far is 0.005
+permutation 300 of 1000.  p-value so far is 0.007
+permutation 400 of 1000.  p-value so far is 0.005
+permutation 500 of 1000.  p-value so far is 0.006
+permutation 600 of 1000.  p-value so far is 0.007
+permutation 700 of 1000.  p-value so far is 0.006
+permutation 800 of 1000.  p-value so far is 0.005
+permutation 900 of 1000.  p-value so far is 0.004
+permutation 999 of 1000.  p-value so far is 0.004
+max component size is 28
+estimating null distribution with 1000 permutations
+permutation 0 of 1000.  p-value so far is 0.000
+permutation 100 of 1000.  p-value so far is 0.000
+permutation 200 of 1000.  p-value so far is 0.000
+permutation 300 of 1000.  p-value so far is 0.003
+permutation 400 of 1000.  p-value so far is 0.005
+permutation 500 of 1000.  p-value so far is 0.006
+permutation 600 of 1000.  p-value so far is 0.005
+permutation 700 of 1000.  p-value so far is 0.006
+permutation 800 of 1000.  p-value so far is 0.005
+permutation 900 of 1000.  p-value so far is 0.004
+permutation 999 of 1000.  p-value so far is 0.004
+max component size is 11
+estimating null distribution with 1000 permutations
+permutation 0 of 1000.  p-value so far is 0.000
+permutation 100 of 1000.  p-value so far is 0.020
+permutation 200 of 1000.  p-value so far is 0.010
+permutation 300 of 1000.  p-value so far is 0.023
+permutation 400 of 1000.  p-value so far is 0.022
+permutation 500 of 1000.  p-value so far is 0.018
+permutation 600 of 1000.  p-value so far is 0.020
+permutation 700 of 1000.  p-value so far is 0.019
+permutation 800 of 1000.  p-value so far is 0.021
+permutation 900 of 1000.  p-value so far is 0.020
+permutation 999 of 1000.  p-value so far is 0.020
+
+============================================================
+METHOD AGREEMENT REPORT (alpha = 0.05 )
+============================================================
+
+sampen:
+  covaries significant: 32   unicovaries significant: 31
+  agree (both flag significant): 29
+  covaries only: 3   unicovaries only: 2
+  Jaccard overlap: 0.853
+
+psd:
+  covaries significant: 28   unicovaries significant: 30
+  agree (both flag significant): 27
+  covaries only: 1   unicovaries only: 3
+  Jaccard overlap: 0.871
+
+ge:
+  covaries significant: 1   unicovaries significant: 1
+  agree (both flag significant): 1
+  covaries only: 0   unicovaries only: 0
+  Jaccard overlap: 1.000
+  agreed features: [2]
+
+cc:
+  covaries significant: 0   unicovaries significant: 0
+  agree (both flag significant): 0
+  covaries only: 0   unicovaries only: 0
+  Jaccard overlap: n/a (both empty)
+
+cpl:
+  covaries significant: 1   unicovaries significant: 1
+  agree (both flag significant): 1
+  covaries only: 0   unicovaries only: 0
+  Jaccard overlap: 1.000
+  agreed features: [2]
+
+sm:
+  covaries significant: 0   unicovaries significant: 0
+  agree (both flag significant): 0
+  covaries only: 0   unicovaries only: 0
+  Jaccard overlap: n/a (both empty)
+
+plv (wave-level: any significant edge/component in this wave):
+  covaries significant: 5   unicovaries significant: 3
+  agree (both flag significant): 3
+  covaries only: 2   unicovaries only: 0
+  Jaccard overlap: 0.600
+  agreed features: [2, 3, 4]
+
+============================================================
+Overlap = finding not just an artifact of one method's assumptions
+(permutation-ANCOVA residualizing vs Mann-Whitney rank-based).
+Single-method-only hits: not automatically wrong, could be a real
+sensitivity difference - but overlap ones are the stronger claim.
+============================================================

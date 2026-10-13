@@ -1,0 +1,50 @@
+Fold 1: 35 significant features found, capped to top 2 by |effect size| (EPV rule: min(28,24)//10)
+Fold 1: 2 features / 52 training subjects = 0.04 features-per-subject 
+Fold 1: selected C = 1.0000 (via inner cross-validation)
+Fold 1: sens=0.875, spec=0.600, AUC=0.875
+Fold 1: features selected this fold:
+  ('sampen', np.int64(2), np.int64(0)): coef = -1.0994
+  ('plv', 2, 2): coef = 1.2152
+Fold 1: 2 significant features, accuracy = 0.769
+Fold 2: 46 significant features found, capped to top 2 by |effect size| (EPV rule: min(29,23)//10)
+Fold 2: 2 features / 52 training subjects = 0.04 features-per-subject 
+Fold 2: selected C = 1.0000 (via inner cross-validation)
+Fold 2: sens=0.857, spec=0.833, AUC=0.786
+Fold 2: features selected this fold:
+  ('sampen', np.int64(16), np.int64(0)): coef = -1.2106
+  ('psd', np.int64(10), np.int64(1)): coef = -1.0327
+Fold 2: 2 significant features, accuracy = 0.846
+Fold 3: 47 significant features found, capped to top 2 by |effect size| (EPV rule: min(29,23)//10)
+Fold 3: 2 features / 52 training subjects = 0.04 features-per-subject 
+Fold 3: selected C = 1.0000 (via inner cross-validation)
+Fold 3: sens=0.857, spec=0.667, AUC=0.833
+Fold 3: features selected this fold:
+  ('psd', np.int64(10), np.int64(1)): coef = -1.5086
+  ('psd', np.int64(9), np.int64(3)): coef = 1.3566
+Fold 3: 2 significant features, accuracy = 0.769
+Fold 4: 96 significant features found, capped to top 2 by |effect size| (EPV rule: min(29,23)//10)
+Fold 4: 2 features / 52 training subjects = 0.04 features-per-subject 
+Fold 4: selected C = 1.0000 (via inner cross-validation)
+Fold 4: sens=0.857, spec=0.833, AUC=0.976
+Fold 4: features selected this fold:
+  ('psd', np.int64(10), np.int64(1)): coef = -1.1046
+  ('plv', 2, 2): coef = 1.1192
+Fold 4: 2 significant features, accuracy = 0.846
+Fold 5: 175 significant features found, capped to top 2 by |effect size| (EPV rule: min(29,23)//10)
+Fold 5: 2 features / 52 training subjects = 0.04 features-per-subject 
+Fold 5: selected C = 1.0000 (via inner cross-validation)
+Fold 5: sens=0.571, spec=0.833, AUC=0.571
+Fold 5: features selected this fold:
+  ('plv', 2, 82): coef = 1.4611
+  ('plv', 2, 35): coef = 1.4314
+Fold 5: 2 significant features, accuracy = 0.692
+
+-------------------------------
+Mean accuracy across 5 folds: 0.785 +/- 0.058
+Per-fold accuracies: ['0.769', '0.846', '0.769', '0.846', '0.692']
+Per-fold significant feature counts: [2, 2, 2, 2, 2]
+-------------------------------
+
+Features selected by LASSO in multiple folds (feature: count):
+  ('psd', np.int64(10), np.int64(1)): 3/5 folds
+  ('plv', 2, 2): 2/5 folds

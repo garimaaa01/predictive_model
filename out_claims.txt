@@ -1,0 +1,23 @@
+
+=== SampEn: 32 significant features ===
+('alpha', 'lower in AD') 12
+('delta', 'higher in AD') 16
+('low_gamma', 'lower in AD') 4
+top 5 by |d|:
+  Fz delta: d = 1.301
+  F3 delta: d = 1.208
+  O1 delta: d = 1.152
+  P8 delta: d = 1.145
+  P7 delta: d = 1.141
+
+=== PSD: 28 significant features ===
+('alpha', 'lower in AD') 6
+('beta', 'lower in AD') 5
+('delta', 'higher in AD') 2
+('theta', 'higher in AD') 15
+top 5 by |d|:
+  F7 theta: d = 1.354
+  T7 theta: d = 1.178
+  O2 alpha: d = -1.121
+  F4 theta: d = 1.105
+  P4 theta: d = 1.073
